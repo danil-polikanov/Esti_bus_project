@@ -1,8 +1,17 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
 }
-
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"> 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script>
+     $(function () { $('#cityInput').autocomplete({ source: function (request, response)
+         { $.ajax({ type: 'POST', url: 'Default.aspx/GetCities', 
+         data: JSON.stringify({ cityName: request.term }), 
+         contentType: 'application/json; charset=utf-8', 
+         dataType: 'json', success: function (data) { response(data.d); } }); }, minLength: 1
+    }); });</script>
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Welcome To the Eesti Bus Stop</h1>
+     <input type="text" id="cityInput" placeholder="Enter City">
 </div>

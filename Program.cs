@@ -1,3 +1,11 @@
+using Esti_bus_project.Data;
+using Esti_bus_project.Data.Repository;
+using Esti_bus_project.IRepository;
+using Esti_bus_project.Models;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
 namespace Esti_bus_project
 {
     public class Program
@@ -8,22 +16,30 @@ namespace Esti_bus_project
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddHttpClient();
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),mysqlOptions => mysqlOptions.CommandTimeout(60)));
+
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddRazorPages();
+            builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
+            builder.Services.AddEndpointsApiExplorer();
+
+            builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
+            {              
+          
+               app.UseHsts();
             }
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
-
+            app.MapControllers();
             app.UseAuthorization();
 
             app.MapControllerRoute(
