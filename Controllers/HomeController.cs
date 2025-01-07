@@ -61,7 +61,6 @@ namespace Esti_bus_project.Controllers
                 selector: r => new { Name = r.StopName }
                 );
             var stopsDistinct = stops.DistinctBy(r => r.Name).ToList();
-            // Логика обработки выбранного региона
             return Ok(stopsDistinct);
         }
         [HttpGet]
@@ -86,15 +85,14 @@ namespace Esti_bus_project.Controllers
             );
 
             var routeSorted = routeShortNames.ToList().OrderBy(x=>x).Distinct();
-
-            return Ok(routeShortNames);
+            return Ok(new { RouteShortNames = routeSorted, StopIds = StopIdList });
         }
         [HttpGet]
         public async Task<IActionResult> GetNearestStopAsync(double? latitude, double? longitude)
         {
             const double EarthRadiusKm = 6371;
 
-            // Haversine Formula в проекции
+            // Haversine Formula
             var nearestStop = await _stopRepository.GetNearestAsync(
                 filter: _ => true, 
                 projection: stop => new
@@ -126,5 +124,63 @@ namespace Esti_bus_project.Controllers
                 Distance = nearestStop.Distance
             });
         }
+        [HttpGet]
+        public async Task<IActionResult> GetBusArrivalsWithDirection(string busNumber, int stopId)
+        {
+            if (string.IsNullOrWhiteSpace(busNumber))
+            {
+                return BadRequest("Bus number is required.");
+            }
+
+            try
+            {
+                var routes = await _routeRepository.GetFilteredAsync(
+                    filter: r => r.RouteShortName == busNumber,
+                    selector: r => new
+                    {
+                        r.RouteId,
+                        r.RouteDesc 
+                    }
+                );
+
+                if (!routes.Any())
+                {
+                    return NotFound($"No route found for bus number {busNumber}.");
+                }
+
+                var routeDetails = routes.First();
+                var routeId = routeDetails.RouteId;
+                var direction = routeDetails.RouteDesc;
+
+                var arrivals = await _stopTimeRepository.GetFilteredAsync(
+                    filter: st => st.StopId == stopId && st.TripId.ToString() == routeId,
+                    selector: st => new
+                    {
+                        st.ArrivalTime,
+                        st.DepartureTime,
+                        st.StopSequence
+                    }
+                );
+
+                if (!arrivals.Any())
+                {
+                    return NotFound($"No arrivals found for bus number {busNumber} at stop {stopId}.");
+                }
+
+                var result = new
+                {
+                    Direction = direction,
+                    Arrivals = arrivals.OrderBy(a => a.StopSequence).Take(5)
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching bus arrivals.");
+                return StatusCode(500, "An error occurred while processing your request.");
+            }
+        }
+
     }
 }

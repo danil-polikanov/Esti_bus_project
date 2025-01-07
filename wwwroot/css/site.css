@@ -25,3 +25,38 @@ body {
 #main-layout {
     background-color:sandybrown;
 }
+#bus-arrivals-container {
+    width: 80%;
+    margin: 20px auto;
+    font-family: Arial, sans-serif;
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+}
+
+#bus-details {
+    margin-top: 20px;
+}
+
+#bus-schedule {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+    #bus-schedule th, #bus-schedule td {
+        border: 1px solid #ddd;
+        text-align: center;
+        padding: 8px;
+    }
+
+    #bus-schedule th {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+#error-message {
+    font-size: 16px;
+}
