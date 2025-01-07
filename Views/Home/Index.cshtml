@@ -1,17 +1,31 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
 }
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"> 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-<script>
-     $(function () { $('#cityInput').autocomplete({ source: function (request, response)
-         { $.ajax({ type: 'POST', url: 'Default.aspx/GetCities', 
-         data: JSON.stringify({ cityName: request.term }), 
-         contentType: 'application/json; charset=utf-8', 
-         dataType: 'json', success: function (data) { response(data.d); } }); }, minLength: 1
-    }); });</script>
-<div class="text-center">
-    <h1 class="display-4">Welcome To the Eesti Bus Stop</h1>
-     <input type="text" id="cityInput" placeholder="Enter City">
+
+<label for="region-input">Enter Region:</label>
+<div class ="d-flex" id="input-group">
+    <input type="text" id="region-input" class="form-control w-25" placeholder="Enter region name..." aria-label="Text input with segmented dropdown button" />
+    <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split ms-1" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul id="region-dropdown" class="region-dropdown dropdown-menu dropdown-menu-end"></ul>
 </div>
+<button id="submit-btn" class="btn btn-primary mt-3">Submit Region</button>
+<div id="response-message" class="mt-3"></div>
+ 
+<label for="stop-input">Enter stops:</label>
+<div class="d-flex" id="input-group">
+    <input type="text" id="stop-input" class="form-control w-25" placeholder="Enter stop name..." aria-label="Text input with segmented dropdown button" />
+    <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split ms-1" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul id="stop-dropdown" class="stop-dropdown dropdown-menu dropdown-menu-end"></ul>
+</div>
+<button id="submit-stop-btn" class="btn btn-primary mt-3">Submit StopStation</button>
+<div id="response-stop-message" class="mt-3"></div>
+
+<div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+    <div class="btn-group me-2" role="group" aria-label="First group">
+    </div>
+</div>
+<script src="~/js/site.js"></script>

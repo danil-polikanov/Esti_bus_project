@@ -1,15 +1,17 @@
 ﻿using Esti_bus_project.IRepository;
 using Esti_bus_project.Models;
 using Microsoft.AspNetCore.Mvc;
-
+using System.Collections;
+using System.Collections.Generic;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Esti_bus_project.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
     public class ApiController : ControllerBase
     {
+
         private readonly IRepository<Models.Route> _routeRepository;
         private readonly IRepository<Stop> _stopRepository;
         private readonly IRepository<Trip> _tripRepository;
@@ -22,25 +24,47 @@ namespace Esti_bus_project.Controllers
             IRepository<StopTime> stopTimeRepository,
             ILogger<ApiController> logger)
         {
-            _routeRepository = routeRepository;
-            _stopRepository = stopRepository;
-            _tripRepository = tripRepository;
-            _stopTimeRepository = stopTimeRepository;
+            _routeRepository=routeRepository;
+            _stopRepository=stopRepository;
+            _tripRepository=tripRepository;
+            _stopTimeRepository=stopTimeRepository;
             _logger = logger;
         }
         // GET: api/<ApiController>
-        [HttpGet]
-        public async Task<IActionResult> GetItemsAsync(int count)
+        [HttpGet("{table}/{count}")]
+        public async Task<IActionResult> GetItemsAsync(string table, int count)
         {
-            var items=await _stopRepository.GetQuerableAsync(count);
-            return Ok(items);
-        }
+            if (table == "routes")
+            {
+                var items =await _routeRepository.GetQuerableAsync(count);
+                return Ok(items);
+            }
+            else if (table == "stops")
+            {
+                var items = await _stopRepository.GetQuerableAsync(count);
+                return Ok(items);
+            }
+            else if (table == "trips")
+            {
+                var items = await _tripRepository.GetQuerableAsync(count);
+                return Ok(items);
+            }
+            else if(table == "stop_time")
+            {
+                var items = await _stopTimeRepository.GetQuerableAsync(count);
+                return Ok(items);
+            }
+            else
+            {
+                return BadRequest();
+            }
 
+        }
         // GET api/<ApiController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet("{table}/{id}")]
+        public async Task<IActionResult> GetItemAsync(string table,int id)
         {
-            return "value";
+            return null;
         }
 
         // POST api/<ApiController>
