@@ -12,6 +12,6 @@ namespace Esti_bus_project.IRepository
               Expression<Func<T, TResult>> selector);
         Task<IEnumerable<TResult>> GetJoinedFilteredAsync<TJoin, TKey, TResult>(Expression<Func<T, bool>> filter, Expression<Func<T, TKey>> outerKeySelector, Expression<Func<TJoin, TKey>> innerKeySelector, Expression<Func<T, TJoin, TResult>> resultSelector, DbSet<TJoin> joinDbSet) where TJoin : class;
         DbSet<T> GetDbSet();
-        Task<TResult?> GetNearestAsync<TResult>(Expression<Func<T, bool>> filter, Expression<Func<T, TResult>> projection);
+      
     }
 }

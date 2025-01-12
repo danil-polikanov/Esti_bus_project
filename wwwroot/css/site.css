@@ -18,12 +18,10 @@ html {
 }
 body {
     margin-bottom: 60px;
+    background-color: sandybrown;
 }
 .navbar-main{
     background-color:burlywood;
-}
-#main-layout {
-    background-color:sandybrown;
 }
 #bus-arrivals-container {
     width: 80%;

@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using Esti_bus_project.Data.Repository;
@@ -18,7 +20,6 @@ namespace Esti_bus_project.Controllers
         private readonly IRepository<Trip> _tripRepository;
         private readonly IRepository<StopTime> _stopTimeRepository;
         private readonly ILogger<HomeController> _logger;
-
         public HomeController(IRepository<Models.Route> routeRepository,
             IRepository<Stop> stopRepository,
             IRepository<Trip> tripRepository,
@@ -58,122 +59,134 @@ namespace Esti_bus_project.Controllers
             }
             var stops = await _stopRepository.GetFilteredAsync(
                 filter: r => r.StopArea == region,
-                selector: r => new { Name = r.StopName }
+                selector: r => new {stopId=r.StopId, Name = r.StopName }
                 );
             var stopsDistinct = stops.DistinctBy(r => r.Name).ToList();
             return Ok(stopsDistinct);
         }
-        [HttpGet]
+        [HttpPost]
         public async Task<IActionResult> GetRouteShortNamesAsync([FromBody] string stopName)
         {
+
             var stopExists = await _stopRepository.GetFilteredAsync(
-                filter: s =>s.StopName == stopName,
+                filter: s => s.StopName == stopName,
                 selector: s => s.StopId
             );
-
-            if (!stopExists.Any())
-            {
-                return NotFound("Stop not found.");
-            }
-            var StopIdList=stopExists.ToList();
-            var routeShortNames = await _stopTimeRepository.GetJoinedFilteredAsync<Models.Route, string, string>(
-            filter: st => StopIdList.Contains(st.StopId),
-            outerKeySelector: st => st.TripId.ToString(), 
-            innerKeySelector: r => r.RouteId,             
-            resultSelector: (st, r) => r.RouteShortName,  
-            joinDbSet: _routeRepository.GetDbSet()
+            int stopId = stopExists.FirstOrDefault();
+            var routeExists = await _stopTimeRepository.GetJoinedFilteredAsync<Trip, int, string>(
+            filter: st => stopExists.Contains(st.StopId),  // Фильтруем по StopId
+            outerKeySelector: st => st.TripId,               // Соединяем по TripId в StopTime
+            innerKeySelector: t => t.TripId,                 // Соединяем по TripId в Trip
+            resultSelector: (st, t) => t.RouteId,             // Мы просто возвращаем TripId
+            joinDbSet: _tripRepository.GetDbSet()            // Соединяем с таблицей Trip
             );
 
-            var routeSorted = routeShortNames.ToList().OrderBy(x=>x).Distinct();
-            return Ok(new { RouteShortNames = routeSorted, StopIds = StopIdList });
+
+            var routeShortNames = await _tripRepository.GetJoinedFilteredAsync<Models.Route, string, Dictionary<string, string>>(
+            filter: t => routeExists.Contains(t.RouteId),
+            outerKeySelector: t => t.RouteId,
+            innerKeySelector: r => r.RouteId,
+            resultSelector: (t, r) => new Dictionary<string, string>()
+            {
+                {r.RouteId, r.RouteShortName }
+            },
+            joinDbSet: _routeRepository.GetDbSet()
+            );
+            var dict = routeShortNames.ToList();
+            Dictionary<string, string> Routes = new Dictionary<string, string>();
+            foreach (var i in dict)
+            {
+                foreach (var j in i.Keys)
+                {
+                    if (!Routes.ContainsKey(j))
+                    {
+                        Routes.Add(j, i[j]);
+                    }
+                }
+
+                Routes = Routes.OrderBy(kvp => kvp.Value).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            }
+            return Json(new
+            {
+                Routes = Routes,
+                stopId = stopId,
+            });
         }
+            
+            
         [HttpGet]
         public async Task<IActionResult> GetNearestStopAsync(double? latitude, double? longitude)
         {
-            const double EarthRadiusKm = 6371;
+            var stops = await _stopRepository.GetQuerableAsync(0);
 
-            // Haversine Formula
-            var nearestStop = await _stopRepository.GetNearestAsync(
-                filter: _ => true, 
-                projection: stop => new
-                {
-                    stopId=stop.StopId,
-                    stopName=stop.StopName,
-                    Stop = stop,
-                    Region = stop.StopArea, 
-                    Distance = EarthRadiusKm * 2 * Math.Asin(Math.Sqrt(
-                        Math.Pow(Math.Sin((double)((stop.StopLat - latitude) * Math.PI / 180 / 2)), 2) +
-                        Math.Cos((double)(latitude * Math.PI / 180)) * Math.Cos((double)(stop.StopLat * Math.PI / 180)) *
-                        Math.Pow(Math.Sin((double)((stop.StopLon - longitude) * Math.PI / 180 / 2)), 2)
-                    ))
-                }
-            );
-
-            if (nearestStop == null)
+            if (stops == null || !stops.Any())
             {
                 return NotFound("No stops found.");
             }
 
-            return Ok(new
+            return Ok(stops.Select(stop => new
             {
-                StopId = nearestStop.stopId,
-                StopName = nearestStop.Stop.StopName,
-                Region = nearestStop.Region,
-                Latitude = nearestStop.Stop.StopLat,
-                Longitude = nearestStop.Stop.StopLon,
-                Distance = nearestStop.Distance
-            });
+                stop.StopId,
+                stop.StopName,
+                stop.StopArea,
+                StopLat = stop.StopLat.ToString().Replace('.', ','),
+                StopLon = stop.StopLon.ToString().Replace('.', ','),
+                Distance=0
+            }));         
         }
+
+
         [HttpGet]
-        public async Task<IActionResult> GetBusArrivalsWithDirection(string busNumber, int stopId)
+        public async Task<IActionResult> GetBusArrivalsWithDirection(string busNumber, string routeId,string time,int stopId)
         {
+            TimeSpan tSpan = TimeSpan.Parse(time);
+    
             if (string.IsNullOrWhiteSpace(busNumber))
             {
                 return BadRequest("Bus number is required.");
             }
-
             try
             {
-                var routes = await _routeRepository.GetFilteredAsync(
-                    filter: r => r.RouteShortName == busNumber,
+                var arrivals = await _stopTimeRepository.GetFilteredAsync(
+                    filter: r => r.StopId==stopId,
                     selector: r => new
                     {
-                        r.RouteId,
-                        r.RouteDesc 
+                        ArrivalTime=TimeSpan.Parse(r.ArrivalTime),
+                        r.TripId
                     }
                 );
 
-                if (!routes.Any())
-                {
-                    return NotFound($"No route found for bus number {busNumber}.");
-                }
+                var nearArrivals = arrivals.Where(ar => ar.ArrivalTime >= tSpan)
+                    .ToList();
 
-                var routeDetails = routes.First();
-                var routeId = routeDetails.RouteId;
-                var direction = routeDetails.RouteDesc;
+                List<int> trips = nearArrivals.Select(t => t.TripId).ToList();
 
-                var arrivals = await _stopTimeRepository.GetFilteredAsync(
-                    filter: st => st.StopId == stopId && st.TripId.ToString() == routeId,
-                    selector: st => new
+                var direction = await _tripRepository.GetFilteredAsync(
+                    filter: t=>t.RouteId==routeId,
+                    selector: t => new
                     {
-                        st.ArrivalTime,
-                        st.DepartureTime,
-                        st.StopSequence
+                       t.TripId,
+                       t.TripLongName
                     }
-                );
-
-                if (!arrivals.Any())
+                );                
+                List<ArrivalsModel> models = new List<ArrivalsModel>();
+                foreach(var i in nearArrivals)
                 {
-                    return NotFound($"No arrivals found for bus number {busNumber} at stop {stopId}.");
+                    foreach(var j in direction)
+                    {
+                        if(i.TripId == j.TripId)
+                        {
+                            ArrivalsModel model = new ArrivalsModel();
+                            {
+                                model.Bus = busNumber;
+                                model.Arrivals = i.ArrivalTime.ToString();
+                                model.TripName = j.TripLongName;
+                            }
+                            models.Add(model);
+                        }
+                    }
                 }
-
-                var result = new
-                {
-                    Direction = direction,
-                    Arrivals = arrivals.OrderBy(a => a.StopSequence).Take(5)
-                };
-
-                return Ok(result);
+                return Ok(models.OrderBy(r=>r.Arrivals).Take(5));
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
 ﻿using Esti_bus_project.IRepository;
+using Esti_bus_project.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,8 +23,17 @@ namespace Esti_bus_project.Data.Repository
         }
         public async Task<IEnumerable<T>> GetQuerableAsync(int items)
         {
-            var query = _dbSet.Take(items);
-            return await query.ToListAsync();
+            if (items == 0)
+            {
+                var query = _context.Stops;
+                return (IEnumerable<T>)await query.ToListAsync();
+            }
+            else
+            {
+                var query = _dbSet.Take(items);
+                return await query.ToListAsync();
+            }
+       
         }
         public async Task<IEnumerable<TResult>> GetFilteredAsync<TResult>(
         Expression<Func<T, bool>> filter,
@@ -40,21 +50,18 @@ namespace Esti_bus_project.Data.Repository
             DbSet<TJoin> joinDbSet                              // Вторая таблица для соединения
         ) where TJoin : class
         {
-            var query = _dbSet
-                .Where(filter)
-                .Join(joinDbSet, outerKeySelector, innerKeySelector, resultSelector);
+            try
+            {
+                var query = _dbSet
+                    .Where(filter)
+                    .Join(joinDbSet, outerKeySelector, innerKeySelector, resultSelector);
 
-            return await query.ToListAsync();
-        }
-        public async Task<TResult?> GetNearestAsync<TResult>(
-        Expression<Func<T, bool>> filter,
-        Expression<Func<T, TResult>> projection)
-        {
-            return await _dbSet
-                .Where(filter)
-                .Select(projection)
-                .OrderBy(result => EF.Property<double>(result, "Distance")) // Упорядочиваем по расстоянию
-                .FirstOrDefaultAsync();
+                return await query.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}"); throw;
+            };
         }
     }
 }
