@@ -18,7 +18,7 @@ namespace Esti_bus_project
             builder.Services.AddControllersWithViews();
             builder.Services.AddHttpClient();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),mysqlOptions => mysqlOptions.CommandTimeout(60)));
+                        options.UseSqlServer(builder.Configuration.GetConnectionString("SqlConnection")));
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddRazorPages();
